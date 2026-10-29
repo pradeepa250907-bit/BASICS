@@ -83,18 +83,99 @@ with open("student_report.txt", "r") as file:
 
 # MINI PROJECT
 # STUDENT PERFORMANCE ANALYSIS
+"""EduTrack: Student Performance and Academic Analytics (Python 3.10+)."""
+import csv
+from pathlib import Path
+from datetime import datetime
 
-print("\n--- MINI PROJECT ---")
+BASE = Path(__file__).resolve().parent
+DATA = BASE / 'students.csv'
+REPORTS = BASE / 'reports'
+SUBJECTS = ['Python', 'Mathematics', 'Data Structures', 'Statistics', 'Database']
+FIELDS = ['register_no', 'name', 'attended', 'conducted'] + SUBJECTS
 
-students = ["A", "B", "C", "D", "E"]
-scores = [85, 90, 78, 92, 88]
 
-for i in range(len(students)):
-    print(students[i], ":", scores[i])
+def ask_int(prompt, low=0, high=100):
+    while True:
+        try:
+            value = int(input(prompt).strip())
+            if low <= value <= high:
+                return value
+        except ValueError:
+            pass
+        print(f'Please enter a whole number from {low} to {high}.')
 
-print("Total Marks:", sum(scores))
-print("Average:", sum(scores)/len(scores))
-print("Highest Score:", max(scores))
-print("Lowest Score:", min(scores))
 
-print("\nMODULE 01 COMPLETED SUCCESSFULLY!")
+def load():
+    if not DATA.exists():
+        return []
+    with DATA.open('r', newline='', encoding='utf-8') as f:
+        return list(csv.DictReader(f))
+
+
+def save(rows):
+    with DATA.open('w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def average(s):
+    return sum(int(s[x]) for x in SUBJECTS) / len(SUBJECTS)
+
+
+def attendance(s):
+    conducted = int(s['conducted'])
+    return 100 * int(s['attended']) / conducted if conducted else 0.0
+
+
+def grade(score):
+    if score >= 90: return 'O'
+    if score >= 80: return 'A+'
+    if score >= 70: return 'A'
+    if score >= 60: return 'B+'
+    if score >= 50: return 'B'
+    if score >= 40: return 'C'
+    return 'F'
+
+
+def find(rows):
+    key = input('Enter register number: ').strip().upper()
+    return next((s for s in rows if s['register_no'].upper() == key), None)
+
+
+def show_student(s):
+    print('\n' + '=' * 48)
+    print(f"{s['name']} | Register No: {s['register_no']}")
+    print('-' * 48)
+    for subject in SUBJECTS:
+        print(f'{subject:<22}: {s[subject]}/100')
+    print(f"Total marks           : {sum(int(s[x]) for x in SUBJECTS)}/{len(SUBJECTS)*100}")
+    print(f'Average / Percentage  : {average(s):.2f}%')
+    print(f'Grade                 : {grade(average(s))}')
+    print(f'Attendance            : {attendance(s):.2f}%')
+    print('Attendance status     :', 'Low (<75%)' if attendance(s) < 75 else 'Satisfactory')
+    print('=' * 48)
+
+
+def add_student(rows):
+    reg = input('Register number: ').strip().upper()
+    if not reg or any(s['register_no'].upper() == reg for s in rows):
+        print('Register number is empty or already exists.'); return
+    name = input('Student name: ').strip()
+    if not name:
+        print('Name cannot be empty.'); return
+    s = {'register_no': reg, 'name': name}
+    for subject in SUBJECTS:
+        s[subject] = ask_int(f'{subject} marks (0-100): ')
+    conducted = ask_int('Total classes conducted: ', 1, 100000)
+    attended = ask_int('Classes attended: ', 0, conducted)
+    s.update(attended=attended, conducted=conducted)
+    rows.append(s)
+    save(rows)
+    print('Student saved successfully!')
+
+
+def list_students(rows):
+    if not rows:
+        print('No student records found.'); return
